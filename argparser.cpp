@@ -6,30 +6,31 @@
  */
 
 #include "argparser.hpp"
-#include <vector>
+
 
 ArgParser::ArgParser(): port{143},
                         mailbox{"INBOX"},
                         only_new{false},
                         only_headers{false},
                         secured{false}
-{}
+{ /* empty constructor body */ }
+
 
 void ArgParser::parse(char *argv[], int argc) {
     // Convert array of const char* into a vector of strings for easier comparison
     std::vector<std::string> args(argv, argv + argc);
 
-    for (auto it = args.begin(); it != args.end(); it++) {
+    for (auto it = args.begin() + 1; it != args.end(); it++) {
         if (*it == "-a") {
-            auth_file = *++it;
+            getOptionValue(args, it, this->auth_file);
         }
         
         else if (*it == "-o") {
-            out_dir = *++it;
+            getOptionValue(args, it, this->out_dir);
         }
 
         else if (*it == "-p") {
-            port = std::stoi(*++it);
+            getOptionValue(args, it, this->port);
         }
 
         else if (*it == "-n") {
@@ -41,26 +42,41 @@ void ArgParser::parse(char *argv[], int argc) {
         }
 
         else if (*it == "-b") {
-            mailbox = *++it;
+            getOptionValue(args, it, this->mailbox);
         }
 
         else if (*it == "-T") {
             secured = true;
 
             // change the default port for TLS
+            // TODO fix, if user wants encrypted, but also wants port 143
             if (port == 143)
                 port = 993;
         }
 
         else if (*it == "-c") {
-            certfile = *++it;
+            getOptionValue(args, it, this->certfile);
         }
 
         else if (*it == "-C") {
-            certaddr = *++it;
+            getOptionValue(args, it, this->certaddr);
         }
 
         else server = *it;
     }
 
 }
+
+
+void ArgParser::getOptionValue(const std::vector<std::string> &args, std::vector<std::string>::iterator &it, int &val) {
+    if (std::next(it) != args.end()) {
+        val = std::stoi(*++it);
+    }
+}
+
+void ArgParser::getOptionValue(const std::vector<std::string> &args, std::vector<std::string>::iterator &it, std::string &val) {
+
+    if (std::next(it) != args.end()) {
+        val = *++it;
+    }
+}    

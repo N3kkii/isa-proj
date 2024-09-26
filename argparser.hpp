@@ -27,6 +27,8 @@
  */
 
 #include <string>
+#include <vector>
+#include <iostream>
 
 
 class ArgParser {
@@ -69,6 +71,15 @@ public:
     void parse(char *argv[], int argc);
 
 private:
+    /**
+     * @brief Get the value of the option from command line
+     * 
+     * @param args vector of command line parameters
+     * @param it iterator at current position
+     * @param val variable to be set with the option value
+     */
+    static void getOptionValue(const std::vector<std::string> &args, std::vector<std::string>::iterator &it, std::string &val);
+    static void getOptionValue(const std::vector<std::string> &args, std::vector<std::string>::iterator &it, int &val);
 
 };
 
