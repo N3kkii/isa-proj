@@ -77,10 +77,11 @@ private:
      * @param args vector of command line parameters
      * @param it iterator at current position
      * @param val variable to be set with the option value
+     * 
+     * Two options, one for integer and one for string variants of variables
      */
     static void getOptionValue(const std::vector<std::string> &args, std::vector<std::string>::iterator &it, std::string &val);
     static void getOptionValue(const std::vector<std::string> &args, std::vector<std::string>::iterator &it, int &val);
-
 };
 
 #endif

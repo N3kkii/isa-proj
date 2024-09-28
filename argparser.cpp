@@ -74,6 +74,7 @@ void ArgParser::getOptionValue(const std::vector<std::string> &args, std::vector
     }
 }
 
+
 void ArgParser::getOptionValue(const std::vector<std::string> &args, std::vector<std::string>::iterator &it, std::string &val) {
 
     if (std::next(it) != args.end()) {
