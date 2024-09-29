@@ -5,17 +5,36 @@
  * @brief Implementation of IMAPClient class
  */
 
-#ifndef IMAPCL_HPP
-#define IMAPCL_HPP
+#ifndef IMAPCLIENT_HPP
+#define IMAPCLIENT_HPP
+
+#include "argparser.hpp"
+
+// C++
+#include <iostream>
+#include <string>
+
+// C
+#include <string.h>
+#include <unistd.h>
+
+// Network libraries
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <netdb.h>
 
 #define BUFFER_SIZE 2048
 
 class IMAPClient {
 public:
     char buffer_in[BUFFER_SIZE]; // Buffer for incoming messages
+    int sockfd;
 
-    IMAPClient();
-    ~IMAPClient();
+    ArgParser args;
+
+    IMAPClient(char *argv[], int argc);
+    ~IMAPClient() = default;
 
     /**
      * @brief Starts the client
@@ -27,7 +46,7 @@ public:
     /**
      * @brief Connects to the IMAP server using TCP
      */
-    void connect();
+    void connectToHost(std::string server);
 
     /**
      * @brief Handles incoming message from server
