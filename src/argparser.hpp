@@ -30,6 +30,8 @@
 #include <vector>
 #include <iostream>
 
+#include "imapclient.hpp"
+
 
 class ArgParser {
 public:
@@ -46,10 +48,11 @@ public:
     bool only_new;
     bool only_headers;
     bool secured;
+    bool display_help;
 
 
     /**
-     * @brief Constructs ArgParser object
+     * @brief Constructs ArgParser object, sets default values
      */
     ArgParser();
 
@@ -72,6 +75,14 @@ public:
     */
     void parse(char *argv[], int argc);
 
+    /**
+     * @brief Get passed parameter configuration in Config structure
+     * 
+     * @return Config structure with passed parameters and their respective options
+     */
+    Config getConfig();
+
+
 private:
     /**
      * @brief Get the value of the option from command line
@@ -84,6 +95,11 @@ private:
      */
     static void getOptionValue(const std::vector<std::string> &args, std::vector<std::string>::iterator &it, std::string &val);
     static void getOptionValue(const std::vector<std::string> &args, std::vector<std::string>::iterator &it, int &val);
+
+    /**
+     * @brief Prints out help
+     */
+    static void printHelp();
 };
 
 #endif

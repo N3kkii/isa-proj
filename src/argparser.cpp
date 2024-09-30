@@ -7,7 +7,6 @@
 
 #include "argparser.hpp"
 
-
 ArgParser::ArgParser(): port{143},
                         mailbox{"INBOX"},
                         only_new{false},
@@ -21,6 +20,7 @@ void ArgParser::parse(char *argv[], int argc) {
     std::vector<std::string> args(argv, argv + argc);
 
     for (auto it = args.begin() + 1; it != args.end(); it++) {
+        
         if (*it == "-a") {
             getOptionValue(args, it, this->auth_file);
         }
@@ -62,6 +62,11 @@ void ArgParser::parse(char *argv[], int argc) {
             getOptionValue(args, it, this->certaddr);
         }
 
+        else if (*it == "--help") {
+            this->printHelp();
+            this->display_help = true;
+        }
+
         else server = *it;
     }
 
@@ -80,4 +85,37 @@ void ArgParser::getOptionValue(const std::vector<std::string> &args, std::vector
     if (std::next(it) != args.end()) {
         val = *++it;
     }
+}
+
+void ArgParser::printHelp() {
+    std::cout << 
+R"(Usage: imapcl server -a auth_file -o out_dir [OPTIONS]
+
+ OPTIONS:
+    -p port         Specifies server port number, defaults to 143 (993 with TLS)
+    -n              Read only new messages
+    -h              Download only mail headers
+    -b MAILBOX      Specifies the mailbox, defaults to INBOX
+    -T              Use secured communication
+    -c certfile     Specifies file with certificates for verifying the server ceritficate
+    -C certaddr     Specifies folder with certificates
+    --help          Shows this help)"
+    << std::endl;
+}
+
+Config ArgParser::getConfig() {
+    Config config;
+
+    config.server = this->server;
+    config.auth_file = this->auth_file;
+    config.out_dir = this->out_dir;
+    config.port = this->port;
+    config.mailbox = this->mailbox;
+    config.mailbox = this->certfile;
+    config.certaddr = this->certaddr;
+    config.only_new = this->only_new;
+    config.only_headers = this->only_headers;
+    config.secured = this->secured;
+
+    return config;   
 }

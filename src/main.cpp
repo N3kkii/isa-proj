@@ -6,10 +6,23 @@
  */
 
 #include "imapclient.hpp"
+#include "argparser.hpp"
 
 
 int main(int argc, char *argv[]) {
-    IMAPClient client{argv, argc};
+    ArgParser args;
+    try {
+        args.parse(argv,argc);
+    }
+
+    catch (std::invalid_argument &e) {
+        e.what();
+        return 1;
+    }
+   
+    Config config = args.getConfig();
+    IMAPClient client(config);
+
     try {
         client.start();
     }
