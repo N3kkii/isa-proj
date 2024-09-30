@@ -66,6 +66,8 @@ public:
     * @param argv from main
     * @param argc from main
     * 
+    * @exception throws std::invalid_argument when option for parameter -p is not a number
+    * 
     * @todo fix missing paremeter argument
     */
     void parse(char *argv[], int argc);
