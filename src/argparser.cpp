@@ -70,13 +70,7 @@ void ArgParser::parse(char *argv[], int argc) {
 
 void ArgParser::getOptionValue(const std::vector<std::string> &args, std::vector<std::string>::iterator &it, int &val) {
     if (std::next(it) != args.end()) {
-        try {
-            val = std::stoi(*++it);
-        }
-        
-        catch (...) {
-            std::cerr << "WARNING: Port must be a number. Using the default port." << std::endl;
-        }
+        val = std::stoi(*++it);
     }
 }
 
