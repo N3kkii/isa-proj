@@ -75,7 +75,12 @@ void ArgParser::parse(char *argv[], int argc) {
 
 void ArgParser::getOptionValue(const std::vector<std::string> &args, std::vector<std::string>::iterator &it, int &val) {
     if (std::next(it) != args.end()) {
-        val = std::stoi(*++it);
+        try {
+            val = std::stoi(*++it);
+        }
+        catch(std::invalid_argument&) {
+            throw std::invalid_argument("port must be a number");
+        }
     }
 }
 

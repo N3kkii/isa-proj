@@ -16,7 +16,7 @@ int main(int argc, char *argv[]) {
     }
 
     catch (std::invalid_argument &e) {
-        e.what();
+        std::cerr << "Error while parsing command line arguments: " << e.what() << std::endl;
         return 1;
     }
    
