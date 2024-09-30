@@ -19,6 +19,8 @@ int main(int argc, char *argv[]) {
         std::cerr << "Error while parsing command line arguments: " << e.what() << std::endl;
         return 1;
     }
+
+    if (args.display_help) return 0;
    
     Config config = args.getConfig();
     IMAPClient client(config);

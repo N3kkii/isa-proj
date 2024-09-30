@@ -69,7 +69,6 @@ void ArgParser::parse(char *argv[], int argc) {
 
         else server = *it;
     }
-
 }
 
 
