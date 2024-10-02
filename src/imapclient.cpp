@@ -44,8 +44,7 @@ void IMAPClient::start() {
 
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 0) {
-        std::cerr << "Error creating socket." << std::endl;
-        exit(1);
+        throw std::runtime_error("Error creating socket.");
     }
 
     this->connectToHost(this->server);
@@ -61,13 +60,11 @@ void IMAPClient::connectToHost(std::string server) {
 
     if (getaddrinfo(server.c_str(), "imap", &hints, &res) != 0) {
         close(sockfd);
-        throw std::runtime_error("Error translating address, terminating");
+        throw std::runtime_error("Error translating address");
     }
 
     // Connect to the host
     connect(this->sockfd, res->ai_addr, res->ai_addrlen);
-    std::cout << "Connection estabilished." << std::endl;
-    std::cout << "Terminating connection." << std::endl;
     close(sockfd);
     freeaddrinfo(res);
 }
