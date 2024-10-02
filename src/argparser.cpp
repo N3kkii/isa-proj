@@ -7,11 +7,17 @@
 
 #include "argparser.hpp"
 
-ArgParser::ArgParser(): port{143},
+ArgParser::ArgParser(): server{""},
+                        auth_file{""},
+                        out_dir{""},
+                        port{143},
                         mailbox{"INBOX"},
+                        certfile{""},
+                        certaddr{""},
                         only_new{false},
                         only_headers{false},
-                        secured{false}
+                        secured{false},
+                        display_help{false}
 { /* empty constructor body */ }
 
 
