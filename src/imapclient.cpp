@@ -40,31 +40,43 @@ IMAPClient::IMAPClient(struct Config &config) :
 }
 
 void IMAPClient::start() {
-
-
-    sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd < 0) {
-        throw std::runtime_error("Error creating socket.");
-    }
-
     this->connectToHost(this->server);
 }
 
 
 void IMAPClient::connectToHost(std::string server) {
-    // Resolve domain with DNS
+    // Initizalizing structures for getaddrinfo
     addrinfo *res, hints;
     memset(&hints, 0, sizeof(addrinfo));
     hints.ai_family = AF_INET;
     hints.ai_socktype = SOCK_STREAM; 
 
+    // Resolve domain name with getaddrinfo
     if (getaddrinfo(server.c_str(), "imap", &hints, &res) != 0) {
-        close(sockfd);
         throw std::runtime_error("Error translating address");
     }
 
-    // Connect to the host
-    connect(this->sockfd, res->ai_addr, res->ai_addrlen);
+    // Create a communication socket
+    this->sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd < 0) {
+        throw std::runtime_error("Error creating socket.");
+    }
+
+    for (auto addr = res; addr != nullptr; addr = addr->ai_next) {
+        // Try to connect, if successful, exit the loop
+        if (connect(this->sockfd, addr->ai_addr, addr->ai_addrlen) == 0) {
+            break;
+        }
+
+        // If addr is the last address, throw std::runtime_error
+        if (addr->ai_next == nullptr) {
+            throw std::runtime_error("Cannot connect to hostname");
+            close(this->sockfd);
+            freeaddrinfo(res);
+        }
+    }
+
+    // Cleanup
     close(sockfd);
     freeaddrinfo(res);
 }
