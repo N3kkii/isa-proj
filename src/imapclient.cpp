@@ -22,6 +22,8 @@ IMAPClient::IMAPClient(std::string &server, std::string &auth_file, std::string 
     secured{secured}
 {
     memset(this->buffer_in, 0, sizeof(this->buffer_in));
+    this->res = nullptr;
+    this->sockfd = -1;
 };
 
 IMAPClient::IMAPClient(struct Config &config) :
@@ -37,6 +39,12 @@ IMAPClient::IMAPClient(struct Config &config) :
     secured{config.secured}
 { 
     memset(this->buffer_in, 0, sizeof(this->buffer_in));
+    this->res = nullptr;
+    this->sockfd = -1;
+}
+
+IMAPClient::~IMAPClient() {
+    cleanup();
 }
 
 void IMAPClient::start() {
@@ -46,13 +54,13 @@ void IMAPClient::start() {
 
 void IMAPClient::connectToHost(std::string server) {
     // Initizalizing structures for getaddrinfo
-    addrinfo *res, hints;
+    addrinfo hints;
     memset(&hints, 0, sizeof(addrinfo));
     hints.ai_family = AF_INET;
     hints.ai_socktype = SOCK_STREAM; 
 
     // Resolve domain name with getaddrinfo
-    if (getaddrinfo(server.c_str(), "imap", &hints, &res) != 0) {
+    if (getaddrinfo(server.c_str(), "imap", &hints, &this->res) != 0) {
         throw std::runtime_error("Error translating address");
     }
 
@@ -62,7 +70,7 @@ void IMAPClient::connectToHost(std::string server) {
         throw std::runtime_error("Error creating socket.");
     }
 
-    for (auto addr = res; addr != nullptr; addr = addr->ai_next) {
+    for (auto addr = this->res; addr != nullptr; addr = addr->ai_next) {
         // Try to connect, if successful, exit the loop
         if (connect(this->sockfd, addr->ai_addr, addr->ai_addrlen) == 0) {
             break;
@@ -71,12 +79,16 @@ void IMAPClient::connectToHost(std::string server) {
         // If addr is the last address, throw std::runtime_error
         if (addr->ai_next == nullptr) {
             throw std::runtime_error("Cannot connect to hostname");
-            close(this->sockfd);
-            freeaddrinfo(res);
         }
     }
+}
 
-    // Cleanup
-    close(sockfd);
-    freeaddrinfo(res);
+void IMAPClient::cleanup() {
+    if (this->sockfd != -1){
+        close(this->sockfd);
+    }
+
+    if (this->res != nullptr) {
+     freeaddrinfo(res);
+    }
 }

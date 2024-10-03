@@ -63,7 +63,7 @@ public:
      * @brief Default destructor
      * 
      */
-    ~IMAPClient() = default;
+    ~IMAPClient();
 
     /**
      * @brief Starts the client
@@ -85,6 +85,8 @@ private:
     bool only_headers;      // work only with mail headers
     bool secured;           // use tls
 
+    addrinfo *res;          // Result of addrinfo call
+
     /**
      * @brief Connects to the IMAP server using TCP
      */
@@ -97,6 +99,11 @@ private:
      */
 
     int handleMessage();
+
+    /**
+     * @brief Frees allocated memory and closes connection
+     */
+    void cleanup();
 
 };
 
