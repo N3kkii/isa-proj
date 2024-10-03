@@ -13,6 +13,7 @@ int main(int argc, char *argv[]) {
     ArgParser args;
     try {
         args.parse(argv,argc);
+        args.check();
     }
 
     catch (std::invalid_argument &e) {

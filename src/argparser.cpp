@@ -129,3 +129,13 @@ Config ArgParser::getConfig() {
 
     return config;   
 }
+
+void ArgParser::check() {
+    if (this->server == "" || this->out_dir == "" || this->auth_file == "") {
+        throw std::invalid_argument("Mandatory arguments not provided.");
+    }
+
+    if ((this->certaddr != "" || this->certfile != "") && this->secured) {
+        std::cerr << "Warning: -c and -C flags without -T, ignoring them" << std::endl;
+    }
+}

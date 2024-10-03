@@ -76,6 +76,15 @@ public:
     void parse(char *argv[], int argc);
 
     /**
+     * @brief Checks the validity of arguments
+     * 
+     * @exception throws std::invalid_argument when mandatory options are not given
+     * 
+     * Check existence of mandatory arguments, validates -T and corresponding flagss
+     */
+    void check();
+
+    /**
      * @brief Get passed parameter configuration in Config structure
      * 
      * @return Config structure with passed parameters and their respective options
