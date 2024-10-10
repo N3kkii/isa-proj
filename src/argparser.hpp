@@ -75,6 +75,7 @@ public:
     */
     void parse(char *argv[], int argc);
 
+
     /**
      * @brief Checks the validity of arguments
      * 
@@ -83,6 +84,7 @@ public:
      * Check existence of mandatory arguments, validates -T and corresponding flagss
      */
     void check();
+
 
     /**
      * @brief Get passed parameter configuration in Config structure
@@ -104,6 +106,7 @@ private:
      */
     static void getOptionValue(const std::vector<std::string> &args, std::vector<std::string>::iterator &it, std::string &val);
     static void getOptionValue(const std::vector<std::string> &args, std::vector<std::string>::iterator &it, int &val);
+
 
     /**
      * @brief Prints out help

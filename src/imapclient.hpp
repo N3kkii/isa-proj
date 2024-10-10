@@ -43,6 +43,7 @@ public:
     char buffer_in[BUFFER_SIZE]; // Buffer for incoming messages
     int sockfd;
 
+
     /**
      * @brief Construct a new IMAPClient object with provided parameters, optional parameteres have default values
      * 
@@ -52,18 +53,21 @@ public:
                 std::string mailbox = "INBOX", std::string certfile = "", std::string certaddr = "", 
                 bool only_new = false, bool only_headers = false, bool secured = false);
 
+
     /**
      * @brief Construct a new IMAPClient object from a config structure
      * 
      * @param config structure with parsed command line arguments
      */
     IMAPClient(Config &config);
-    
+
+
     /**
      * @brief Default destructor
      * 
      */
     ~IMAPClient();
+
 
     /**
      * @brief Starts the client
@@ -90,22 +94,26 @@ private:
     bool logged;
     addrinfo *res;          // Result of addrinfo call
 
+
     /**
      * @brief Connects to the IMAP server using TCP
      */
     void connectToHost();
+
 
     /**
      * @brief Attemps to log in on the server
      */
     void login();
 
+
     /**
      * @brief Logs out the user
      * 
      */
     void logout();
-    
+
+
     /**
      * @brief Constructs a tagged command to be sent to the server
      * 
@@ -113,11 +121,11 @@ private:
      */
     void sendCommand(const std::string &cmd);
 
+
     /**
      * @brief Frees allocated memory and closes connection
      */
     void cleanup();
-
 };
 
 
