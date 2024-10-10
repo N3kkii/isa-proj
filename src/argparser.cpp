@@ -55,7 +55,7 @@ void ArgParser::parse(char *argv[], int argc) {
             secured = true;
 
             // change the default port for TLS
-            // TODO fix, if user wants encrypted, but also wants port 143
+            // TODO fix, if user wants encrypted, but also wants port 143 for some reason
             if (port == 143)
                 port = 993;
         }

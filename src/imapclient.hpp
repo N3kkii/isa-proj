@@ -85,6 +85,9 @@ private:
     bool only_headers;      // work only with mail headers
     bool secured;           // use tls
 
+    /* Variables for internal state */
+    int tag;                // tag number for labeling outgoing commands
+    bool logged;
     addrinfo *res;          // Result of addrinfo call
 
     /**
@@ -96,6 +99,19 @@ private:
      * @brief Attemps to log in on the server
      */
     void login();
+
+    /**
+     * @brief Logs out the user
+     * 
+     */
+    void logout();
+    
+    /**
+     * @brief Constructs a tagged command to be sent to the server
+     * 
+     * @param cmd command to send
+     */
+    void sendCommand(const std::string &cmd);
 
     /**
      * @brief Frees allocated memory and closes connection

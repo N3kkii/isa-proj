@@ -20,7 +20,9 @@ IMAPClient::IMAPClient(std::string &server, std::string &auth_file, std::string 
     certaddr{certaddr},
     only_new{only_new},
     only_headers{only_headers},
-    secured{secured}
+    secured{secured},
+    tag{1},
+    logged{false}
 {
     memset(this->buffer_in, 0, sizeof(this->buffer_in));
     this->res = nullptr;
@@ -37,7 +39,9 @@ IMAPClient::IMAPClient(struct Config &config) :
     certaddr{config.certaddr},
     only_new{config.only_new},
     only_headers{config.only_headers},
-    secured{config.secured}
+    secured{config.secured},
+    tag{1},
+    logged{false}
 { 
     memset(this->buffer_in, 0, sizeof(this->buffer_in));
     this->res = nullptr;
@@ -50,27 +54,7 @@ IMAPClient::~IMAPClient() {
 
 void IMAPClient::start() {
     this->connectToHost();
-    /*read(this->sockfd, this->buffer_in, BUFFER_SIZE);
-    std::cout << "Response from server:\n" << this->buffer_in << std::endl;*/
     this->login();
-
-    /*
-    send(this->sockfd, "A001 LOGIN xadame44 eDahngoo7w\r\n", strlen("A001 LOGIN xadame44 eDahngoo7w\r\n"), 0);
-    read(this->sockfd, this->buffer_in, BUFFER_SIZE);
-    std::cout << "Response from server:\n" << this->buffer_in << std::endl;
-    sleep(1);
-    
-    send(this->sockfd, "A002 SELECT INBOX\r\n", strlen("A002 SELECT Inbox\r\n"), 0);
-    read(this->sockfd, this->buffer_in, BUFFER_SIZE);
-    std::cout << "Response from server:\n" << this->buffer_in << std::endl;
-    sleep(1);
-
-
-    send(this->sockfd, "A003 FETCH 1 (BODY[])\r\n", strlen("A003 FETCH 1 (BODY[])\r\n"), 0);
-    read(this->sockfd, this->buffer_in, BUFFER_SIZE);
-    std::cout << "Response from server:\n" << this->buffer_in << std::endl;
-    sleep(1);*/
-
 }
 
 
@@ -83,7 +67,7 @@ void IMAPClient::connectToHost() {
     hints.ai_socktype = SOCK_STREAM; 
 
     // Resolve domain name with getaddrinfo
-    if (getaddrinfo(this->server.c_str(), "imaps", &hints, &this->res) != 0) {
+    if (getaddrinfo(this->server.c_str(), std::to_string(this->port).c_str(), &hints, &this->res) != 0) {
         throw std::runtime_error("Error translating address");
     }
 
@@ -105,6 +89,8 @@ void IMAPClient::connectToHost() {
             throw std::runtime_error("Cannot connect to hostname");
         }
     }
+    recv(this->sockfd, this->buffer_in, BUFFER_SIZE, 0);
+    std::cout << this->buffer_in << std::endl;
 }
 
 void IMAPClient::login() {
@@ -121,12 +107,32 @@ void IMAPClient::login() {
         throw std::runtime_error("Wrong auth file format.");
     }
 
-    std::cout << "Username: " << username << std::endl << "Password: " << password << std::endl;
-
     file.close();
+    this->sendCommand(std::string("LOGIN " + username + " " + password));
+    recv(this->sockfd, this->buffer_in, BUFFER_SIZE, 0);
+    std::cout << this->buffer_in << std::endl;
+    this->logged = true;
+}
+
+void IMAPClient::logout() {
+    this->sendCommand("LOGOUT");
+    recv(this->sockfd, this->buffer_in, BUFFER_SIZE, 0);
+    std::cout << this->buffer_in << std::endl;
+}
+
+void IMAPClient::sendCommand(const std::string &cmd) {
+    std::string outstr = "A" + std::to_string(this->tag) + " " + cmd + " \r\n";
+    if(send(this->sockfd, outstr.c_str(), outstr.length(), 0) < 0) {
+        throw std::runtime_error("Failed to send a command");
+    }
+    this->tag++;
 }
 
 void IMAPClient::cleanup() {
+    if (this->logged) {
+        this->logout();
+    }
+
     if (this->sockfd != -1){
         close(this->sockfd);
     }
