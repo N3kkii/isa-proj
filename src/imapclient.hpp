@@ -22,7 +22,7 @@
 #include <netinet/in.h>
 #include <netdb.h>
 
-#define BUFFER_SIZE 2048
+#define BUFFER_SIZE 4096
 
 struct Config {
     std::string server;
@@ -90,15 +90,12 @@ private:
     /**
      * @brief Connects to the IMAP server using TCP
      */
-    void connectToHost(std::string server);
+    void connectToHost();
 
     /**
-     * @brief Handles incoming message from server
-     * 
-     * @return 1 if message is incomplete, else return 0;
+     * @brief Attemps to log in on the server
      */
-
-    int handleMessage();
+    void login();
 
     /**
      * @brief Frees allocated memory and closes connection
