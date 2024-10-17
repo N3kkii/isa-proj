@@ -123,6 +123,15 @@ private:
 
 
     /**
+     * @brief Checks the repsonse from the server
+     * 
+     * @throw std::runtime_error if response is BAD/NO
+     * 
+     */
+    void checkResponse();
+
+
+    /**
      * @brief Frees allocated memory and closes connection
      */
     void cleanup();

@@ -93,8 +93,7 @@ void IMAPClient::connectToHost() {
         }
     }
     // TODO Check response (welcome message)
-    recv(this->sockfd, this->buffer_in, BUFFER_SIZE, 0);
-    std::cout << this->buffer_in << std::endl;
+    this->checkResponse();
 }
 
 
@@ -114,18 +113,12 @@ void IMAPClient::login() {
 
     file.close();
     this->sendCommand(std::string("LOGIN " + username + " " + password));
-    // TODO Check response
-    recv(this->sockfd, this->buffer_in, BUFFER_SIZE, 0);
-    std::cout << this->buffer_in << std::endl;
     this->logged = true;
 }
 
 
 void IMAPClient::logout() {
     this->sendCommand("LOGOUT");
-    // TODO Check response
-    recv(this->sockfd, this->buffer_in, BUFFER_SIZE, 0);
-    std::cout << this->buffer_in << std::endl;
 }
 
 void IMAPClient::sendCommand(const std::string &cmd) {
@@ -134,9 +127,27 @@ void IMAPClient::sendCommand(const std::string &cmd) {
     if(send(this->sockfd, outstr.c_str(), outstr.length(), 0) < 0) {
         throw std::runtime_error("Failed to send a command");
     }
+    this->checkResponse();
     
     // Increment tag for the next command
     this->tag++;
+}
+
+
+void IMAPClient::checkResponse() {
+    std::string response;
+    ssize_t nrecieved;
+    while(response.find("\r\n") == std::string::npos) {
+        nrecieved = recv(this->sockfd, this->buffer_in, BUFFER_SIZE, 0);
+        
+        if( nrecieved == -1){
+            throw std::runtime_error("Server closed the connection.");
+        }
+
+        response.append(this->buffer_in, nrecieved);
+    }
+
+    std::cout << "Got a full response: " << response << std::endl;
 }
 
 
