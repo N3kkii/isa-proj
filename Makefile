@@ -32,4 +32,7 @@ run-tests:
 clean:
 	rm -rf $(BUILD_DIR)
 
+debug: CXXFLAGS += -g -O0
+debug: all
+
 .PHONY: all clean tests run-tests
