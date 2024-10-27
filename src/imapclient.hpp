@@ -128,7 +128,7 @@ private:
      * @throw std::runtime_error if response is BAD/NO
      * 
      */
-    void checkResponse();
+    void checkResponse(bool tagged = false);
 
 
     /**

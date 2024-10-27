@@ -127,27 +127,36 @@ void IMAPClient::sendCommand(const std::string &cmd) {
     if(send(this->sockfd, outstr.c_str(), outstr.length(), 0) < 0) {
         throw std::runtime_error("Failed to send a command");
     }
-    this->checkResponse();
+    this->checkResponse(true);
     
     // Increment tag for the next command
     this->tag++;
 }
 
 
-void IMAPClient::checkResponse() {
-    std::string response;
+void IMAPClient::checkResponse(bool tagged) {
+    std::string buff, response;
     ssize_t nrecieved;
-    while(response.find("\r\n") == std::string::npos) {
+    std::size_t idx = 0;
+
+    // call recv as long as we don't get /r/n sequence
+    while(!buff.ends_with("\r\n")) {
         nrecieved = recv(this->sockfd, this->buffer_in, BUFFER_SIZE, 0);
         
-        if( nrecieved == -1){
+        if(nrecieved == -1 || nrecieved == 0){
             throw std::runtime_error("Server closed the connection.");
         }
 
-        response.append(this->buffer_in, nrecieved);
+        buff.append(this->buffer_in, nrecieved);
     }
 
-    std::cout << "Got a full response: " << response << std::endl;
+    do {
+        idx = buff.find("\r\n");
+        response = buff.substr(0, idx + 2);
+        buff = buff.erase(0, idx + 2);
+        // process response based on type
+    }
+    while (!buff.empty());
 }
 
 
