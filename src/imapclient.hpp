@@ -24,6 +24,15 @@
 
 #define BUFFER_SIZE 4096
 
+enum class CommandType {
+    NONE,
+    CONNECT,
+    LOGIN,
+    LOGOUT,
+    SELECT,
+    FETCH
+};
+
 struct Config {
     std::string server;
     std::string auth_file;
@@ -80,6 +89,7 @@ private:
     std::string server;     // name (IP address) of server to connect to
     std::string auth_file;  // file with authentication credentials
     std::string out_dir;    // directory for storing downloaded mail
+    CommandType current_command;
     
     int port;               // connecting port
     std::string mailbox;    // mailbox to work with
@@ -129,6 +139,8 @@ private:
      * 
      */
     void checkResponse(bool tagged = false);
+
+    void processResponse(std::string &buff);
 
 
     /**

@@ -25,6 +25,7 @@ IMAPClient::IMAPClient(std::string &server, std::string &auth_file, std::string 
     logged{false}
 {
     memset(this->buffer_in, 0, sizeof(this->buffer_in));
+    current_command = CommandType::NONE;
     this->res = nullptr;
     this->sockfd = -1;
 };
@@ -45,6 +46,7 @@ IMAPClient::IMAPClient(struct Config &config) :
     logged{false}
 { 
     memset(this->buffer_in, 0, sizeof(this->buffer_in));
+    current_command = CommandType::NONE;
     this->res = nullptr;
     this->sockfd = -1;
 }
@@ -93,6 +95,7 @@ void IMAPClient::connectToHost() {
         }
     }
     // TODO Check response (welcome message)
+    this->current_command = CommandType::CONNECT;
     this->checkResponse();
 }
 
@@ -112,12 +115,14 @@ void IMAPClient::login() {
     }
 
     file.close();
+    this->current_command = CommandType::LOGIN;
     this->sendCommand(std::string("LOGIN " + username + " " + password));
     this->logged = true;
 }
 
 
 void IMAPClient::logout() {
+    this->current_command = CommandType::LOGOUT;
     this->sendCommand("LOGOUT");
 }
 
@@ -135,9 +140,8 @@ void IMAPClient::sendCommand(const std::string &cmd) {
 
 
 void IMAPClient::checkResponse(bool tagged) {
-    std::string buff, response;
+    std::string buff;
     ssize_t nrecieved;
-    std::size_t idx = 0;
 
     // call recv as long as we don't get /r/n sequence
     while(!buff.ends_with("\r\n")) {
@@ -149,12 +153,65 @@ void IMAPClient::checkResponse(bool tagged) {
 
         buff.append(this->buffer_in, nrecieved);
     }
+     this->processResponse(buff);
+
+    
+}
+
+void IMAPClient::processResponse(std::string &buff) {
+    std::size_t idx = 0;
+    std::string response;
 
     do {
         idx = buff.find("\r\n");
         response = buff.substr(0, idx + 2);
         buff = buff.erase(0, idx + 2);
-        // process response based on type
+
+        std::cout << response;
+
+        switch (this->current_command)
+        {
+        
+        case CommandType::CONNECT:
+            if (response.starts_with("* OK")) {
+                std::cout << "Positive untagged response" << std::endl;
+            }
+            else {
+                std::cout << "NON-Positive response" << std::endl;
+            }
+            break;
+
+        case CommandType::LOGIN:
+            if (response.starts_with("A" + std::to_string(this->tag) + " OK")) {
+                std::cout << "Positive tagged response" << std::endl;
+            }
+            else {
+                std::cout << "NON-Positive response" << std::endl;
+            }
+            break;
+        
+        case CommandType::LOGOUT:
+            if (response.starts_with("A" + std::to_string(this->tag) + " OK")) {
+                std::cout << "Positive tagged response" << std::endl;
+            }
+
+            else if (response.starts_with("* BYE")) {
+                std::cout << "Positive untagged response" << std::endl;
+            }
+
+            else {
+                std::cout << "NON-Positive response" << std::endl;
+            }
+            break;
+
+        case CommandType::SELECT:
+            break;
+
+
+        default:
+            break;
+        }
+        
     }
     while (!buff.empty());
 }
