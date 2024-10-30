@@ -121,7 +121,7 @@ Config ArgParser::getConfig() {
     config.out_dir = this->out_dir;
     config.port = this->port;
     config.mailbox = this->mailbox;
-    config.mailbox = this->certfile;
+    config.certfile = this->certfile;
     config.certaddr = this->certaddr;
     config.only_new = this->only_new;
     config.only_headers = this->only_headers;
