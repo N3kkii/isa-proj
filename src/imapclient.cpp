@@ -60,6 +60,7 @@ IMAPClient::~IMAPClient() {
 void IMAPClient::start() {
     this->connectToHost();
     this->login();
+    this->selectMailbox();
 }
 
 
@@ -116,7 +117,7 @@ void IMAPClient::login() {
 
     file.close();
     this->current_command = CommandType::LOGIN;
-    this->sendCommand(std::string("LOGIN " + username + " " + password));
+    this->sendCommand("LOGIN " + username + " " + password);
     this->logged = true;
 }
 
@@ -138,13 +139,33 @@ void IMAPClient::sendCommand(const std::string &cmd) {
     this->tag++;
 }
 
+void IMAPClient::selectMailbox() {
+    this->current_command = CommandType::SELECT;
+    this->sendCommand("SELECT " + this->mailbox);
+}
+
 
 void IMAPClient::checkResponse(bool tagged) {
     std::string buff;
     ssize_t nrecieved;
 
     // call recv as long as we don't get /r/n sequence
-    while(!buff.ends_with("\r\n")) {
+    // fix this, loop until I get tagged response
+    if (tagged) {
+        while(buff.find("A" + std::to_string(this->tag) + " OK") == std::string::npos) {
+            nrecieved = recv(this->sockfd, this->buffer_in, BUFFER_SIZE, 0);
+            
+            if(nrecieved == -1 || nrecieved == 0){
+                throw std::runtime_error("Server closed the connection.");
+            }
+
+            buff.append(this->buffer_in, nrecieved);
+        }
+    }
+    
+
+    else {
+        while(!buff.ends_with("\r\n")) {
         nrecieved = recv(this->sockfd, this->buffer_in, BUFFER_SIZE, 0);
         
         if(nrecieved == -1 || nrecieved == 0){
@@ -152,8 +173,10 @@ void IMAPClient::checkResponse(bool tagged) {
         }
 
         buff.append(this->buffer_in, nrecieved);
+        }
     }
-     this->processResponse(buff);
+    
+    this->processResponse(buff);
 
     
 }
@@ -167,46 +190,49 @@ void IMAPClient::processResponse(std::string &buff) {
         response = buff.substr(0, idx + 2);
         buff = buff.erase(0, idx + 2);
 
-        std::cout << response;
-
         switch (this->current_command)
         {
         
-        case CommandType::CONNECT:
-            if (response.starts_with("* OK")) {
-                std::cout << "Positive untagged response" << std::endl;
-            }
-            else {
-                std::cout << "NON-Positive response" << std::endl;
-            }
-            break;
+        // case CommandType::CONNECT:
+        //     if (response.starts_with("* OK")) {
+        //         std::cout << "Positive untagged response" << std::endl;
+        //     }
+        //     else {
+        //         std::cout << "NON-Positive response" << std::endl;
+        //         throw std::runtime_error("Connection could not be estabilished");
+        //     }
+        //     break;
 
-        case CommandType::LOGIN:
-            if (response.starts_with("A" + std::to_string(this->tag) + " OK")) {
-                std::cout << "Positive tagged response" << std::endl;
-            }
-            else {
-                std::cout << "NON-Positive response" << std::endl;
-            }
-            break;
+        // case CommandType::LOGIN:
+        //     if (response.starts_with("A" + std::to_string(this->tag) + " OK")) {
+        //         std::cout << "Positive tagged response" << std::endl;
+        //     }
+        //     else {
+        //         std::cout << "NON-Positive response" << std::endl;
+        //         throw std::runtime_error("Login failed");
+        //     }
+        //     break;
         
-        case CommandType::LOGOUT:
-            if (response.starts_with("A" + std::to_string(this->tag) + " OK")) {
-                std::cout << "Positive tagged response" << std::endl;
-            }
+        // case CommandType::LOGOUT:
+        //     if (response.starts_with("A" + std::to_string(this->tag) + " OK")) {
+        //         std::cout << "Positive tagged response" << std::endl;
+        //     }
 
-            else if (response.starts_with("* BYE")) {
-                std::cout << "Positive untagged response" << std::endl;
-            }
+        //     else if (response.starts_with("* BYE")) {
+        //         std::cout << "Positive untagged response" << std::endl;
+        //     }
 
-            else {
-                std::cout << "NON-Positive response" << std::endl;
-            }
-            break;
+        //     else {
+        //         std::cout << "NON-Positive response" << std::endl;
+        //     }
+        //     break;
 
-        case CommandType::SELECT:
-            break;
-
+        // case CommandType::SELECT:
+        //     break;
+        
+        // case CommandType::FETCH:
+        //     std::cout << "Jsem ve FETCHi" << std::endl;
+        //     break;
 
         default:
             break;

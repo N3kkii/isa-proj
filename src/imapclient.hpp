@@ -22,7 +22,7 @@
 #include <netinet/in.h>
 #include <netdb.h>
 
-#define BUFFER_SIZE 4096
+#define BUFFER_SIZE 10000
 
 enum class CommandType {
     NONE,
@@ -123,6 +123,12 @@ private:
      */
     void logout();
 
+    /**
+     * @brief changes active mailbox
+     * 
+     */
+    void selectMailbox();
+
 
     /**
      * @brief Constructs a tagged command to be sent to the server
@@ -140,6 +146,11 @@ private:
      */
     void checkResponse(bool tagged = false);
 
+    /**
+     * @brief Processes incoming data
+     * 
+     * @param buff buffer with data from server
+     */
     void processResponse(std::string &buff);
 
 
