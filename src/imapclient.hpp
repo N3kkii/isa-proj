@@ -24,13 +24,13 @@
 
 #define BUFFER_SIZE 10000
 
-enum class CommandType {
-    NONE,
-    CONNECT,
-    LOGIN,
-    LOGOUT,
-    SELECT,
-    FETCH
+enum class State {
+    DISCONNECTED,
+    CONNECTED,
+    LOGGED,
+    SELECTED,
+    FETCHING,
+    LOGOUT
 };
 
 struct Config {
@@ -89,7 +89,7 @@ private:
     std::string server;     // name (IP address) of server to connect to
     std::string auth_file;  // file with authentication credentials
     std::string out_dir;    // directory for storing downloaded mail
-    CommandType current_command;
+    State state;
     
     int port;               // connecting port
     std::string mailbox;    // mailbox to work with
@@ -101,8 +101,8 @@ private:
 
     /* Variables for internal state */
     int tag;                // tag number for labeling outgoing commands
-    bool logged;
     addrinfo *res;          // Result of addrinfo call
+    bool complete;          // indicator of a complete response from a server for checkResponse() function
 
 
     /**

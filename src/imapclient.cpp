@@ -8,7 +8,8 @@
 
 #include "imapclient.hpp"
 #include <fstream>
-
+#include <sstream>
+#include <filesystem>
 IMAPClient::IMAPClient(std::string &server, std::string &auth_file, std::string &out_dir, int port, std::string mailbox, 
                         std::string certfile, std::string certaddr, bool only_new, bool only_headers, bool secured):
     server{server},
@@ -22,10 +23,10 @@ IMAPClient::IMAPClient(std::string &server, std::string &auth_file, std::string 
     only_headers{only_headers},
     secured{secured},
     tag{1},
-    logged{false}
+    complete{false}
 {
     memset(this->buffer_in, 0, sizeof(this->buffer_in));
-    current_command = CommandType::NONE;
+    state = State::DISCONNECTED;
     this->res = nullptr;
     this->sockfd = -1;
 };
@@ -43,10 +44,10 @@ IMAPClient::IMAPClient(struct Config &config) :
     only_headers{config.only_headers},
     secured{config.secured},
     tag{1},
-    logged{false}
+    complete{false}
 { 
     memset(this->buffer_in, 0, sizeof(this->buffer_in));
-    current_command = CommandType::NONE;
+    state = State::DISCONNECTED;
     this->res = nullptr;
     this->sockfd = -1;
 }
@@ -58,17 +59,17 @@ IMAPClient::~IMAPClient() {
 
 
 void IMAPClient::start() {
-    std::cout << "Connectim" << std::endl;
     this->connectToHost();
-    std::cout << "Jdu na prihlasovani" << std::endl;
     this->login();
     this->selectMailbox();
-    this->current_command = CommandType::FETCH;
-    this->sendCommand("FETCH 1:5 (BODY[HEADER])");
+    //this->state = State::FETCHING;
+    //this->sendCommand("FETCH 1:5 (BODY[HEADER])");
 }
 
 
 void IMAPClient::connectToHost() {
+
+    this->state = State::DISCONNECTED;
 
     // Initizalizing structures for getaddrinfo
     addrinfo hints;
@@ -100,10 +101,7 @@ void IMAPClient::connectToHost() {
         }
     }
     // TODO Check response (welcome message)
-    this->current_command = CommandType::CONNECT;
-    std::cout << "Jdu checknout response po connectnuti" << std::endl;
     this->checkResponse();
-    std::cout << "Jsem pripojen" << std::endl;
 }
 
 
@@ -122,14 +120,12 @@ void IMAPClient::login() {
     }
 
     file.close();
-    this->current_command = CommandType::LOGIN;
     this->sendCommand("LOGIN " + username + " " + password);
-    this->logged = true;
 }
 
 
 void IMAPClient::logout() {
-    this->current_command = CommandType::LOGOUT;
+    this->state = State::LOGOUT;
     this->sendCommand("LOGOUT");
 }
 
@@ -146,7 +142,6 @@ void IMAPClient::sendCommand(const std::string &cmd) {
 }
 
 void IMAPClient::selectMailbox() {
-    this->current_command = CommandType::SELECT;
     this->sendCommand("SELECT " + this->mailbox);
 }
 
@@ -154,100 +149,127 @@ void IMAPClient::selectMailbox() {
 void IMAPClient::checkResponse(bool tagged) {
     std::string buff;
     ssize_t nrecieved;
-    bool complete = false;
-
-    // call recv as long as we don't get /r/n sequence
-    // fix this, loop until I get tagged response
-    if (tagged) {
-        while(!complete) {
-            nrecieved = recv(this->sockfd, this->buffer_in, BUFFER_SIZE, 0);
-            
-            if(nrecieved == -1 || nrecieved == 0){
-                throw std::runtime_error("Server closed the connection.");
-            }
-            buff.append(this->buffer_in, nrecieved);
-            if(buff.find("A" + std::to_string(this->tag) + " OK") != std::string::npos) {
-                complete = true;
-            }
-            this->processResponse(buff);
+    while(!this->complete) {
+        // try to get data from the server
+        nrecieved = recv(this->sockfd, this->buffer_in, BUFFER_SIZE, 0);
+        
+        if(nrecieved == -1 || nrecieved == 0){
+            throw std::runtime_error("Server closed the connection.");
         }
-
+        buff.append(this->buffer_in, nrecieved);
+        
+        // process recieved data
+        this->processResponse(buff);
     }
-    
-
-    else {
-        while(!complete) {
-            nrecieved = recv(this->sockfd, this->buffer_in, BUFFER_SIZE, 0);
-            
-            if(nrecieved == -1 || nrecieved == 0){
-                throw std::runtime_error("Server closed the connection.");
-            }
-
-            buff.append(this->buffer_in, nrecieved);
-            if (buff.ends_with("\r\n")) {
-                complete = true;
-            }
-            this->processResponse(buff);
-        }
-    }
-    
+    this->complete = false;
 }
 
 void IMAPClient::processResponse(std::string &buff) {
     std::size_t idx = 0;
     std::string response;
-    int i = 0;
 
-    while (!buff.empty()){
+    while (!buff.empty() && !this->complete){
         idx = buff.find("\r\n");
+
+        if (idx == std::string::npos) {
+            return;
+        }
+
         response = buff.substr(0, idx + 2);
         buff = buff.erase(0, idx + 2);
-        std::string filename = this->out_dir + std::to_string(i);
 
-        if (this->current_command == CommandType::SELECT) {
-
+        // Recieve welcome message
+        if (this->state == State::DISCONNECTED) {
+            if (response.starts_with("* OK")) {
+                this->complete = true;
+                this->state = State::CONNECTED;
+            }
         }
 
-        else if (this->current_command == CommandType::FETCH) {
-            //std::ofstream file(filename);
-            //file << response;
+        // Logging in
+        else if (this->state == State::CONNECTED) {
+            if (response.starts_with("A" + std::to_string(this->tag))) {
+                this->complete = true;
+                this->state = State::LOGGED;
+            }
         }
-        std::cout << response;
-        // switch (this->current_command)
-        // {
-        
-        // // case CommandType::LOGOUT:
-        // //     if (response.starts_with("A" + std::to_string(this->tag) + " OK")) {
-        // //         std::cout << "Positive tagged response" << std::endl;
-        // //     }
 
-        // //     else if (response.starts_with("* BYE")) {
-        // //         std::cout << "Positive untagged response" << std::endl;
-        // //     }
+        // Selecting mailbox
+        // TODO Two files:
+        //      uidconf:    UIDVALIDITY
+        //                  UIDNEXT
+        //
+        //      uidlist: all UIDs
+        else if (this->state == State::LOGGED) {
+            
+            // handle untagged responses
+            if (response.starts_with("* OK")) {
+                std::string argline = response.substr(response.find("[")+1, response.find("]") - response.find("[")-1);
+                std::istringstream iss{argline};
+                std::string arg;
+                iss >> arg;
 
-        // //     else {
-        // //         std::cout << "NON-Positive response" << std::endl;
-        // //     }
-        // //     break;
+                if (arg == "UIDVALIDITY") {
+                    std::string old_uid, new_uid;
+                    iss >> new_uid;
+                    std::string filename = this->out_dir + "/.uidvalidity";
 
-        // case CommandType::SELECT:
-        //     break;
-        
-        // // case CommandType::FETCH:
-        // //     std::ofstream file(filename);
-        // //     break;
+                    // if .uidvalidity exists, try to read it
+                    if (std::filesystem::exists(filename)) {
+                        
+                        // check existing UIDVALIDITY
+                        std::ifstream uidvalid_f(filename);
+                        if (uidvalid_f.is_open()) {
+                            std::getline(uidvalid_f, old_uid); 
 
-        // default:
-        //     std::cout << response;
-        //     break;
-        // 
-        i++;
+                            // if UIDVALIDITY differs, reopen the file in write mode and rewrite
+                            if (old_uid != new_uid) {
+                                std::ofstream uidvalid_f(filename);
+                                uidvalid_f << new_uid;
+                            }
+                        }
+                        else {
+                            throw (std::runtime_error("Cannot open .uidvalidity file."));
+                        }
+                    }
+                    
+                    // else create .uidvalidity file
+                    else {
+                        std::ofstream uidvalid_f(filename);
+                        if (uidvalid_f.is_open()) {
+                            uidvalid_f << new_uid;
+                        }
+                        
+                        else {
+                            throw (std::runtime_error("Cannot create .uidvalidity file."));
+                        }
+                    }
+                }
+
+                else if (arg == "UIDNEXT") {
+                    
+                }
+            }
+
+            else if (response.starts_with("A" + std::to_string(this->tag))) {
+                this->complete = true;
+                this->state = State::SELECTED;
+            }
+        }
+
+        else if (this->state == State::FETCHING || this->state == State::SELECTED || this->state == State::LOGOUT) {
+             if(response.starts_with("A" + std::to_string(this->tag))) {
+                this->complete = true;
+            }
+        }
+        std::cout << response << std::endl;
+
     }
 }
 
 
 void IMAPClient::cleanup() {
-    if (this->logged) {
+    if (this->state != State::DISCONNECTED) {
         this->logout();
     }
 
