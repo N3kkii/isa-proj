@@ -10,6 +10,8 @@
 #include <fstream>
 #include <sstream>
 #include <filesystem>
+
+
 IMAPClient::IMAPClient(std::string &server, std::string &auth_file, std::string &out_dir, int port, std::string mailbox, 
                         std::string certfile, std::string certaddr, bool only_new, bool only_headers, bool secured):
     server{server},
@@ -22,35 +24,22 @@ IMAPClient::IMAPClient(std::string &server, std::string &auth_file, std::string 
     only_new{only_new},
     only_headers{only_headers},
     secured{secured},
+    
     tag{1},
-    complete{false}
+    res{nullptr},
+    state{State::DISCONNECTED},
+    complete{false},
+    uidvalidity{false}
 {
     memset(this->buffer_in, 0, sizeof(this->buffer_in));
-    state = State::DISCONNECTED;
-    this->res = nullptr;
-    this->sockfd = -1;
-};
+}
 
 
 IMAPClient::IMAPClient(struct Config &config) :
-    server{config.server},
-    auth_file{config.auth_file},
-    out_dir{config.out_dir},
-    port{config.port},
-    mailbox{config.mailbox},
-    certfile{config.certfile},
-    certaddr{config.certaddr},
-    only_new{config.only_new},
-    only_headers{config.only_headers},
-    secured{config.secured},
-    tag{1},
-    complete{false}
-{ 
-    memset(this->buffer_in, 0, sizeof(this->buffer_in));
-    state = State::DISCONNECTED;
-    this->res = nullptr;
-    this->sockfd = -1;
-}
+    IMAPClient(config.server, config.auth_file, config.out_dir, config.port, 
+               config.mailbox, config.certfile, config.certaddr, 
+               config.only_new, config.only_headers, config.secured)
+{ /* empty body */ }
 
 
 IMAPClient::~IMAPClient() {
@@ -227,12 +216,13 @@ void IMAPClient::processResponse(std::string &buff) {
                                 std::ofstream uidvalid_f(filename);
                                 uidvalid_f << new_uid;
                             }
+                            else this->uidvalidity = true;
                         }
                         else {
                             throw (std::runtime_error("Cannot open .uidvalidity file."));
                         }
                     }
-                    
+
                     // else create .uidvalidity file
                     else {
                         std::ofstream uidvalid_f(filename);
@@ -247,7 +237,18 @@ void IMAPClient::processResponse(std::string &buff) {
                 }
 
                 else if (arg == "UIDNEXT") {
-                    
+                    std::string filename = this->out_dir + "/.uidnext";
+
+                    if (!std::filesystem::exists(filename)) {
+                        std::ofstream uidnext_f(filename);
+                        if (uidnext_f.is_open()) {
+                            uidnext_f << "1";
+                        }
+                        
+                        else {
+                            throw (std::runtime_error("Cannot create .uidnext file."));
+                        }
+                    }
                 }
             }
 
