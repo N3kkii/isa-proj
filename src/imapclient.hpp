@@ -103,6 +103,7 @@ private:
     State state;            // internal state of client
     bool complete;          // indicator of a complete response from a server for checkResponse() function
     bool uidvalidity;       // validity of mail UIDs
+    std::string buff;       // input stream buffer
 
 
     /**
@@ -131,6 +132,12 @@ private:
 
 
     /**
+     * @brief fetches mails from the server
+     */
+    void fetchMails();
+
+
+    /**
      * @brief Constructs a tagged command to be sent to the server
      * 
      * @param cmd command to send
@@ -151,7 +158,7 @@ private:
      * 
      * @param buff buffer with data from server
      */
-    void processResponse(std::string &buff);
+    void processResponse();
 
 
     /**
