@@ -29,7 +29,8 @@ IMAPClient::IMAPClient(std::string &server, std::string &auth_file, std::string 
     res{nullptr},
     state{State::DISCONNECTED},
     complete{false},
-    uidvalidity{false}
+    uidvalidity{false},
+    buff{}
 {
     memset(this->buffer_in, 0, sizeof(this->buffer_in));
 }
@@ -51,8 +52,7 @@ void IMAPClient::start() {
     this->connectToHost();
     this->login();
     this->selectMailbox();
-    //this->state = State::FETCHING;
-    //this->sendCommand("FETCH 1:5 (BODY[HEADER])");
+    this->fetchMails();
 }
 
 
@@ -134,9 +134,16 @@ void IMAPClient::selectMailbox() {
     this->sendCommand("SELECT " + this->mailbox);
 }
 
+void IMAPClient::fetchMails() {
+    this->state = State::FETCHING;
+    if(!this->uidvalidity){
+        // TODO
+    }
+    this->sendCommand("UID FETCH 1:10 (BODY[])");
+}
+
 
 void IMAPClient::checkResponse(bool tagged) {
-    std::string buff;
     ssize_t nrecieved;
     while(!this->complete) {
         // try to get data from the server
@@ -144,28 +151,33 @@ void IMAPClient::checkResponse(bool tagged) {
         
         if(nrecieved == -1 || nrecieved == 0){
             throw std::runtime_error("Server closed the connection.");
+            this->state = State::DISCONNECTED;
         }
         buff.append(this->buffer_in, nrecieved);
         
         // process recieved data
-        this->processResponse(buff);
+        this->processResponse();
     }
     this->complete = false;
 }
 
-void IMAPClient::processResponse(std::string &buff) {
+void IMAPClient::processResponse() {
     std::size_t idx = 0;
     std::string response;
+    static bool getting_data = false;
 
-    while (!buff.empty() && !this->complete){
-        idx = buff.find("\r\n");
+    while (!this->buff.empty() && !this->complete){
+        if (!getting_data) {
+            idx = buff.find("\r\n");
 
-        if (idx == std::string::npos) {
-            return;
+            if (idx == std::string::npos) {
+                return;
+            }
+
+            response = this->buff.substr(0, idx + 2);
+            this->buff = this->buff.erase(0, idx + 2);
         }
-
-        response = buff.substr(0, idx + 2);
-        buff = buff.erase(0, idx + 2);
+        
 
         // Recieve welcome message
         if (this->state == State::DISCONNECTED) {
@@ -184,11 +196,6 @@ void IMAPClient::processResponse(std::string &buff) {
         }
 
         // Selecting mailbox
-        // TODO Two files:
-        //      uidconf:    UIDVALIDITY
-        //                  UIDNEXT
-        //
-        //      uidlist: all UIDs
         else if (this->state == State::LOGGED) {
             
             // handle untagged responses
@@ -258,13 +265,40 @@ void IMAPClient::processResponse(std::string &buff) {
             }
         }
 
-        else if (this->state == State::FETCHING || this->state == State::SELECTED || this->state == State::LOGOUT) {
-             if(response.starts_with("A" + std::to_string(this->tag))) {
+        else if (this->state == State::FETCHING) {
+            static unsigned long nbytes = 0;
+            if (getting_data){
+
+                if (this->buff.length() < nbytes) { 
+                    return; // If we dont have enough data, return to checkResponse() (for readability)
+                }
+
+                else {
+                    std::string mail = this->buff.substr(0, nbytes);
+                    std::cout << "---------START OF MAIL---------\n" << mail << "----------END OF MAIL----------\n";
+                    getting_data = false;
+                }
+            }
+
+            else {
+                if (response.starts_with("*")) {
+                nbytes = stoi(response.substr(response.find("{")+1, response.find("}") - response.find("{")-1));
+                getting_data = true;
+                }
+
+                else if(response.starts_with("A" + std::to_string(this->tag))) {
+                    this->complete = true;
+                    this->state = State::SELECTED;
+                }
+            }
+        }
+
+        else if (this->state == State::SELECTED || this->state == State::LOGOUT) {
+            if(response.starts_with("A" + std::to_string(this->tag))) {
                 this->complete = true;
             }
         }
-        std::cout << response << std::endl;
-
+        //std::cout << response << std::endl;
     }
 }
 
