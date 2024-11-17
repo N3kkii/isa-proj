@@ -10,7 +10,8 @@ Compile the program using ```make```, for debugging use ```make debug```.
 
 ## Usage
 
-```imapcl server -a auth_file -o out_dir [-T] [-c] [-C] [-p port] [-b mailbox] [-n] [-h]```
+```imapcl server -a auth_file -o out_dir [-T] [-c] [-C] [-p port] [-b mailbox] [-n] [-h] [--help]```
+
 
 ## Authors:
 Vojtěch Adámek, VUT FIT 2024
