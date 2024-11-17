@@ -7,7 +7,6 @@
 
 
 #include "imapclient.hpp"
-#include <config.hpp>
 #include <fstream>
 #include <sstream>
 #include <filesystem>

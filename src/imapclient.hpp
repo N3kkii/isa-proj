@@ -22,6 +22,8 @@
 #include <netinet/in.h>
 #include <netdb.h>
 
+#include "config.hpp"
+
 #define BUFFER_SIZE 10000
 
 enum class State {
@@ -33,19 +35,6 @@ enum class State {
     LOGOUT
 };
 
-struct Config {
-    std::string server;
-    std::string auth_file;
-    std::string out_dir;
-    
-    int port;
-    std::string mailbox;
-    std::string certfile;
-    std::string certaddr;
-    bool only_new;
-    bool only_headers;
-    bool secured;
-};
 
 class IMAPClient {
 public:
