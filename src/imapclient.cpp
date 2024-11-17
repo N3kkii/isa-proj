@@ -29,6 +29,7 @@ IMAPClient::IMAPClient(std::string &server, std::string &auth_file, std::string 
     state{State::DISCONNECTED},
     complete{false},
     uidvalidity{false},
+    uidnext{"1"},
     buff{},
     bio{nullptr},
     ctx{nullptr},
@@ -84,7 +85,8 @@ void IMAPClient::connectToHost() {
                 throw std::runtime_error("Cannot load certificate.");
             }
         }
-        
+        SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER, NULL);
+
 
         SSL *ssl = SSL_new(ctx);
         // initialize BIO object for secured connection
@@ -171,10 +173,11 @@ void IMAPClient::selectMailbox() {
 void IMAPClient::fetchMails() {
     this->state = State::FETCHING;
     if(!this->uidvalidity){
-        this->sendCommand("UID FETCH 1:50 (BODY[])");
+        this->sendCommand("UID FETCH 1:* (BODY[])");
     }
+    
     else {
-        this->sendCommand("UID FETCH 1:50 (BODY[])");
+        this->sendCommand("UID FETCH " + this->uidnext + ":* (BODY[])");
     }
 }
 
@@ -293,6 +296,11 @@ void IMAPClient::processResponse() {
                             throw (std::runtime_error("Cannot create .uidnext file."));
                         }
                     }
+
+                    else {
+                        std::ifstream uidnext_f(filename);
+                        uidnext_f >> this->uidnext;
+                    }
                 }
             }
 
@@ -305,6 +313,7 @@ void IMAPClient::processResponse() {
         else if (this->state == State::FETCHING) {
             static unsigned long nbytes = 0;
             static std::string filename;
+            static std::string uid;
             if (getting_data){
 
                 if (this->buff.length() < nbytes) { 
@@ -317,6 +326,8 @@ void IMAPClient::processResponse() {
                     std::ofstream mailfile(filename);
                     mailfile << data;
                     nmails++;
+                    std::ofstream uidnext_f(this->out_dir + "/.uidnext");
+                    uidnext_f << uid;
                     getting_data = false;
                 }
             }
@@ -326,7 +337,6 @@ void IMAPClient::processResponse() {
                 nbytes = stoi(response.substr(response.find("{")+1, response.find("}") - response.find("{")-1));
                 
                 std::istringstream iss{response.substr(response.find("UID"), response.length()-1)}; // MOVE into ELSE
-                std::string uid;
                 iss >> uid >> uid;
                 filename = this->out_dir + "/" + uid + "." + this->mailbox + "." + this->server;
 

@@ -95,6 +95,7 @@ private:
     State state;            // internal state of client
     bool complete;          // indicator of a complete response from a server for checkResponse() function
     bool uidvalidity;       // validity of mail UIDs
+    std::string uidnext;
     std::string buff;       // input stream buffer
 
     BIO *bio;               // OpenSSL BIO object for writing and reading on socket
