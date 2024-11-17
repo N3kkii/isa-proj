@@ -57,6 +57,10 @@ void IMAPClient::start() {
     this->connectToHost();
     this->login();
     this->selectMailbox();
+    if (this->synced) {
+        std::cout << "All emails from server are already downloaded." << std::endl;
+        return;
+    }
     this->fetchMails();
 }
 
@@ -152,15 +156,12 @@ void IMAPClient::logout() {
 void IMAPClient::sendCommand(const std::string &cmd) {
     // Construct an outgoing command
     std::string outstr = "A" + std::to_string(this->tag) + " " + cmd + " \r\n";
-    // if(send(this->sockfd, outstr.c_str(), outstr.length(), 0) < 0) {
-    //     throw std::runtime_error("Failed to send a command");
-    // }
 
     if(BIO_write(this->bio, outstr.c_str(), outstr.length()) < 0) {
         throw std::runtime_error("Failed to send a command");
     }
 
-    this->checkResponse(true);
+    this->checkResponse();
     
     // Increment tag for the next command
     this->tag++;
@@ -182,11 +183,10 @@ void IMAPClient::fetchMails() {
 }
 
 
-void IMAPClient::checkResponse(bool tagged) {
+void IMAPClient::checkResponse() {
     ssize_t nrecieved;
     while(!this->complete) {
         // try to get data from the server
-        // nrecieved = recv(this->sockfd, this->buffer_in, BUFFER_SIZE, 0);
         nrecieved = BIO_read(this->bio, this->buffer_in, BUFFER_SIZE);
         
         if(nrecieved == -1 || nrecieved == 0){
@@ -304,6 +304,11 @@ void IMAPClient::processResponse() {
                     else {
                         std::ifstream uidnext_f(filename);
                         uidnext_f >> this->uidnext;
+                        std::string new_uidnext;
+                        iss >> new_uidnext;
+                        if(new_uidnext == this->uidnext) {
+                            this->synced = true;
+                        }
                     }
                 }
             }

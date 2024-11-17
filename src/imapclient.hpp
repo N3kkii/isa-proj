@@ -95,13 +95,14 @@ private:
     State state;            // internal state of client
     bool complete;          // indicator of a complete response from a server for checkResponse() function
     bool uidvalidity;       // validity of mail UIDs
+    bool synced;            // client - server synchronization flag
     std::string uidnext;
     std::string buff;       // input stream buffer
 
     BIO *bio;               // OpenSSL BIO object for writing and reading on socket
-    SSL_CTX *ctx;
+    SSL_CTX *ctx;           // OpenSSL context structure
 
-    unsigned long nmails;
+    unsigned long nmails;   // Number of downloaded mails
 
 
     /**
@@ -145,16 +146,13 @@ private:
 
     /**
      * @brief Checks the repsonse from the server
-     * 
-     * @throw std::runtime_error if response is BAD/NO
-     * 
      */
-    void checkResponse(bool tagged = false);
+    void checkResponse();
 
     /**
      * @brief Processes incoming data
      * 
-     * @param buff buffer with data from server
+     * @throw std::runtime_error if response is BAD/NO
      */
     void processResponse();
 
