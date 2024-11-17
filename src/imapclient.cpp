@@ -73,11 +73,11 @@ void IMAPClient::connectToHost() {
 
         // load certificates
         // TODO -c -C parameters
-        if(! SSL_CTX_load_verify_locations(ctx, "~/certs/cert.pem", NULL)) {
+        if(!SSL_CTX_load_verify_locations(ctx, "~/certs/cert.pem", NULL)) {
             throw std::runtime_error("Cannot load certificate");
         }
 
-        SSL *ssl = nullptr;
+        SSL *ssl = SSL_new(ctx);
         // initialize BIO object for secured connection
         this->bio = BIO_new_ssl_connect(this->ctx);
         if(bio == nullptr) {
@@ -95,6 +95,7 @@ void IMAPClient::connectToHost() {
         if(SSL_get_verify_result(ssl) != X509_V_OK) {
             throw std::runtime_error("Cannot verify the certificate");
         }
+        SSL_free(ssl);
     }
 
     else {
@@ -320,7 +321,6 @@ void IMAPClient::processResponse() {
                 filename = this->out_dir + "/" + uid + "." + this->mailbox + "." + this->server;
 
                 getting_data = true;
-                std::cout << response << std::endl;
                 }
 
                 else if(response.starts_with("A" + std::to_string(this->tag))) {
