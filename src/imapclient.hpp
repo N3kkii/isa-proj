@@ -96,7 +96,9 @@ private:
     bool complete;          // indicator of a complete response from a server for checkResponse() function
     bool uidvalidity;       // validity of mail UIDs
     std::string buff;       // input stream buffer
+
     BIO *bio;               // OpenSSL BIO object for writing and reading on socket
+    SSL_CTX *ctx;
 
 
     /**

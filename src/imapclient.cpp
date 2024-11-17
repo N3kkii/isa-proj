@@ -29,7 +29,9 @@ IMAPClient::IMAPClient(std::string &server, std::string &auth_file, std::string 
     state{State::DISCONNECTED},
     complete{false},
     uidvalidity{false},
-    buff{}
+    buff{},
+    bio{nullptr},
+    ctx{nullptr}
 {
     memset(this->buffer_in, 0, sizeof(this->buffer_in));
     SSL_load_error_strings();
@@ -61,15 +63,50 @@ void IMAPClient::connectToHost() {
     this->state = State::DISCONNECTED;
 
     std::string address = this->server + ":" + std::to_string(this->port);
-    this->bio = BIO_new_connect(address.c_str());
-    if(bio == nullptr)
-    {
-        throw std::runtime_error("Cannot initialize BIO object for connection.");
+
+    if (this->secured) { // use secured connection
+        // create SSL context
+        this->ctx = SSL_CTX_new(SSLv23_client_method());
+        if (ctx == nullptr) {
+            throw std::runtime_error("Error creating SSL context.");
+        }
+
+        // load certificates
+        // TODO -c -C parameters
+        if(! SSL_CTX_load_verify_locations(ctx, "~/certs/cert.pem", NULL)) {
+            throw std::runtime_error("Cannot load certificate");
+        }
+
+        SSL *ssl = nullptr;
+        // initialize BIO object for secured connection
+        this->bio = BIO_new_ssl_connect(this->ctx);
+        if(bio == nullptr) {
+            throw std::runtime_error("Cannot initialize BIO object for connection.");
+        }
+
+        BIO_get_ssl(this->bio, ssl);
+        SSL_set_mode(ssl, SSL_MODE_AUTO_RETRY);
+        BIO_set_conn_hostname(bio, address.c_str());
+
+        if(BIO_do_connect(bio) <= 0) {
+            throw std::runtime_error("Cannot estabilish secured connection.");
+        }
+
+        if(SSL_get_verify_result(ssl) != X509_V_OK) {
+            throw std::runtime_error("Cannot verify the certificate");
+        }
     }
 
-    if(BIO_do_connect(bio) <= 0)
-    {
-        throw std::runtime_error("Cannot connect to the server.");
+    else {
+        this->bio = BIO_new_connect(address.c_str());
+
+        if(bio == nullptr) {
+            throw std::runtime_error("Cannot initialize BIO object for connection.");
+        }
+
+        if(BIO_do_connect(bio) <= 0) {
+            throw std::runtime_error("Cannot connect to the server.");
+        }
     }
     // Check for welcome message
     this->checkResponse();
@@ -124,10 +161,10 @@ void IMAPClient::selectMailbox() {
 void IMAPClient::fetchMails() {
     this->state = State::FETCHING;
     if(!this->uidvalidity){
-        this->sendCommand("UID FETCH 1:* (BODY[])");
+        this->sendCommand("UID FETCH 1:50 (BODY[])");
     }
     else {
-        this->sendCommand("UID FETCH 1:* (BODY[])");
+        this->sendCommand("UID FETCH 1:50 (BODY[])");
     }
 }
 
@@ -309,5 +346,9 @@ void IMAPClient::cleanup() {
 
     if (this->bio != nullptr) {
         BIO_free_all(this->bio);
+    }
+
+    if (this->ctx != nullptr) {
+        SSL_CTX_free(this->ctx);
     }
 }
