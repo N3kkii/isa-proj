@@ -135,7 +135,7 @@ void ArgParser::check() {
         throw std::invalid_argument("Mandatory arguments not provided.");
     }
 
-    if ((this->certaddr != "" || this->certfile != "") && this->secured) {
+    if (this->certaddr.empty() && this->certfile.empty() && this->secured) {
         std::cerr << "Warning: -c and -C flags without -T, ignoring them" << std::endl;
     }
 }
