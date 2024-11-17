@@ -22,6 +22,11 @@
 #include <netinet/in.h>
 #include <netdb.h>
 
+// SSL
+#include  "openssl/bio.h"
+#include  "openssl/ssl.h"
+#include  "openssl/err.h"
+
 #include "config.hpp"
 
 #define BUFFER_SIZE 10000
@@ -39,7 +44,6 @@ enum class State {
 class IMAPClient {
 public:
     char buffer_in[BUFFER_SIZE]; // Buffer for incoming messages
-    int sockfd;
 
     /**
      * @brief Construct a new IMAPClient object with provided parameters, optional parameteres have default values
@@ -88,11 +92,11 @@ private:
 
     /* Variables for internal state */
     int tag;                // tag number for labeling outgoing commands
-    addrinfo *res;          // result of addrinfo call
     State state;            // internal state of client
     bool complete;          // indicator of a complete response from a server for checkResponse() function
     bool uidvalidity;       // validity of mail UIDs
     std::string buff;       // input stream buffer
+    BIO *bio;               // OpenSSL BIO object for writing and reading on socket
 
 
     /**

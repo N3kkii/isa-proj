@@ -26,13 +26,14 @@ IMAPClient::IMAPClient(std::string &server, std::string &auth_file, std::string 
     secured{secured},
     
     tag{1},
-    res{nullptr},
     state{State::DISCONNECTED},
     complete{false},
     uidvalidity{false},
     buff{}
 {
     memset(this->buffer_in, 0, sizeof(this->buffer_in));
+    SSL_load_error_strings();
+    OpenSSL_add_all_algorithms();
 }
 
 
@@ -57,39 +58,20 @@ void IMAPClient::start() {
 
 
 void IMAPClient::connectToHost() {
-
     this->state = State::DISCONNECTED;
 
-    // Initizalizing structures for getaddrinfo
-    addrinfo hints;
-    memset(&hints, 0, sizeof(addrinfo));
-    hints.ai_family = AF_INET;
-    hints.ai_socktype = SOCK_STREAM; 
-
-    // Resolve domain name with getaddrinfo
-    if (getaddrinfo(this->server.c_str(), std::to_string(this->port).c_str(), &hints, &this->res) != 0) {
-        throw std::runtime_error("Error translating address");
+    std::string address = this->server + ":" + std::to_string(this->port);
+    this->bio = BIO_new_connect(address.c_str());
+    if(bio == nullptr)
+    {
+        throw std::runtime_error("Cannot initialize BIO object for connection.");
     }
 
-    // Create a communication socket
-    this->sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd < 0) {
-        throw std::runtime_error("Error creating socket.");
+    if(BIO_do_connect(bio) <= 0)
+    {
+        throw std::runtime_error("Cannot connect to the server.");
     }
-
-    for (auto addr = this->res; addr != nullptr; addr = addr->ai_next) {
-        // Try to connect, if successful, exit the loop
-        // TODO Set the socket to nonblocking and set a timeout to avoid endless retransmission
-        if (connect(this->sockfd, addr->ai_addr, addr->ai_addrlen) == 0) {
-            break;
-        }
-
-        // If addr is the last address, throw std::runtime_error
-        if (addr->ai_next == nullptr) {
-            throw std::runtime_error("Cannot connect to hostname");
-        }
-    }
-    // TODO Check response (welcome message)
+    // Check for welcome message
     this->checkResponse();
 }
 
@@ -121,9 +103,14 @@ void IMAPClient::logout() {
 void IMAPClient::sendCommand(const std::string &cmd) {
     // Construct an outgoing command
     std::string outstr = "A" + std::to_string(this->tag) + " " + cmd + " \r\n";
-    if(send(this->sockfd, outstr.c_str(), outstr.length(), 0) < 0) {
+    // if(send(this->sockfd, outstr.c_str(), outstr.length(), 0) < 0) {
+    //     throw std::runtime_error("Failed to send a command");
+    // }
+
+    if(BIO_write(this->bio, outstr.c_str(), outstr.length()) < 0) {
         throw std::runtime_error("Failed to send a command");
     }
+
     this->checkResponse(true);
     
     // Increment tag for the next command
@@ -149,7 +136,8 @@ void IMAPClient::checkResponse(bool tagged) {
     ssize_t nrecieved;
     while(!this->complete) {
         // try to get data from the server
-        nrecieved = recv(this->sockfd, this->buffer_in, BUFFER_SIZE, 0);
+        // nrecieved = recv(this->sockfd, this->buffer_in, BUFFER_SIZE, 0);
+        nrecieved = BIO_read(this->bio, this->buffer_in, BUFFER_SIZE);
         
         if(nrecieved == -1 || nrecieved == 0){
             throw std::runtime_error("Server closed the connection.");
@@ -319,11 +307,7 @@ void IMAPClient::cleanup() {
         this->logout();
     }
 
-    if (this->sockfd != -1){
-        close(this->sockfd);
-    }
-
-    if (this->res != nullptr) {
-     freeaddrinfo(res);
+    if (this->bio != nullptr) {
+        BIO_free_all(this->bio);
     }
 }

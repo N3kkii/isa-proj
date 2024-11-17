@@ -17,7 +17,7 @@ EXEC=imapcl
 all: $(BUILD_DIR)/$(EXEC)
 
 $(BUILD_DIR)/$(EXEC): $(OBJS)
-	$(CXX) $(OBJS) -o $(BUILD_DIR)/$(EXEC)
+	$(CXX) $(OBJS) -o $(BUILD_DIR)/$(EXEC) -lssl -lcrypto
 
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp
 	mkdir -p $(dir $@)

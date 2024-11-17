@@ -4,6 +4,7 @@ CLI client capable of downloading mail from a specified IMAP server. Supports TL
 ### Requirements:
 * make
 * g++10 or newer
+* OpenSSL library 3.0 or newer
 
 Compile the program using ```make```, for debugging use ```make debug```.
 
