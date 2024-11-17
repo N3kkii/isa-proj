@@ -30,7 +30,7 @@
 #include <vector>
 #include <iostream>
 
-#include "imapclient.hpp"
+#include "config.hpp"
 
 
 class ArgParser {

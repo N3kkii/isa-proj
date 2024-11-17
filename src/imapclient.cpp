@@ -7,6 +7,7 @@
 
 
 #include "imapclient.hpp"
+#include <config.hpp>
 #include <fstream>
 #include <sstream>
 #include <filesystem>
@@ -137,9 +138,11 @@ void IMAPClient::selectMailbox() {
 void IMAPClient::fetchMails() {
     this->state = State::FETCHING;
     if(!this->uidvalidity){
-        // TODO
+        this->sendCommand("UID FETCH 1:* (BODY[])");
     }
-    this->sendCommand("UID FETCH 1:10 (BODY[])");
+    else {
+        this->sendCommand("UID FETCH 1:* (BODY[])");
+    }
 }
 
 
@@ -267,15 +270,18 @@ void IMAPClient::processResponse() {
 
         else if (this->state == State::FETCHING) {
             static unsigned long nbytes = 0;
+            static std::string filename;
             if (getting_data){
 
                 if (this->buff.length() < nbytes) { 
-                    return; // If we dont have enough data, return to checkResponse() (for readability)
+                    return; // Dont have enough data, return to checkResponse() (for readability)
                 }
 
                 else {
-                    std::string mail = this->buff.substr(0, nbytes);
-                    std::cout << "---------START OF MAIL---------\n" << mail << "----------END OF MAIL----------\n";
+                    std::string data = this->buff.substr(0, nbytes);
+                    this->buff.erase(0, nbytes + 3); // nbytes + 3 to remove ')\r\n' also
+                    std::ofstream mailfile(filename);
+                    mailfile << data;
                     getting_data = false;
                 }
             }
@@ -283,7 +289,14 @@ void IMAPClient::processResponse() {
             else {
                 if (response.starts_with("*")) {
                 nbytes = stoi(response.substr(response.find("{")+1, response.find("}") - response.find("{")-1));
+                
+                std::istringstream iss{response.substr(response.find("UID"), response.length()-1)}; // MOVE into ELSE
+                std::string uid;
+                iss >> uid >> uid;
+                filename = this->out_dir + "/" + uid + "." + this->mailbox + "." + this->server;
+
                 getting_data = true;
+                std::cout << response << std::endl;
                 }
 
                 else if(response.starts_with("A" + std::to_string(this->tag))) {
@@ -298,7 +311,6 @@ void IMAPClient::processResponse() {
                 this->complete = true;
             }
         }
-        //std::cout << response << std::endl;
     }
 }
 
