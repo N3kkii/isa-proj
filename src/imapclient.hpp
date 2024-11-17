@@ -100,6 +100,8 @@ private:
     BIO *bio;               // OpenSSL BIO object for writing and reading on socket
     SSL_CTX *ctx;
 
+    unsigned long nmails;
+
 
     /**
      * @brief Connects to the IMAP server using TCP

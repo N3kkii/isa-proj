@@ -31,7 +31,8 @@ IMAPClient::IMAPClient(std::string &server, std::string &auth_file, std::string 
     uidvalidity{false},
     buff{},
     bio{nullptr},
-    ctx{nullptr}
+    ctx{nullptr},
+    nmails{0}
 {
     memset(this->buffer_in, 0, sizeof(this->buffer_in));
     SSL_load_error_strings();
@@ -72,10 +73,18 @@ void IMAPClient::connectToHost() {
         }
 
         // load certificates
-        // TODO -c -C parameters
-        if(!SSL_CTX_load_verify_locations(ctx, "~/certs/cert.pem", NULL)) {
-            throw std::runtime_error("Cannot load certificate");
+        if (!this->certaddr.empty()) {
+            if(!SSL_CTX_load_verify_locations(ctx, nullptr, this->certaddr.c_str())) {
+                throw std::runtime_error("Cannot load certificates from folder.");
+            }
         }
+
+        else if (!this->certfile.empty()) {
+            if(!SSL_CTX_load_verify_locations(ctx, this->certfile.c_str(), NULL)) {
+                throw std::runtime_error("Cannot load certificate.");
+            }
+        }
+        
 
         SSL *ssl = SSL_new(ctx);
         // initialize BIO object for secured connection
@@ -93,7 +102,7 @@ void IMAPClient::connectToHost() {
         }
 
         if(SSL_get_verify_result(ssl) != X509_V_OK) {
-            throw std::runtime_error("Cannot verify the certificate");
+            throw std::runtime_error("Cannot verify the certificate.");
         }
         SSL_free(ssl);
     }
@@ -307,6 +316,7 @@ void IMAPClient::processResponse() {
                     this->buff.erase(0, nbytes + 3); // nbytes + 3 to remove ')\r\n' also
                     std::ofstream mailfile(filename);
                     mailfile << data;
+                    nmails++;
                     getting_data = false;
                 }
             }
@@ -325,6 +335,7 @@ void IMAPClient::processResponse() {
 
                 else if(response.starts_with("A" + std::to_string(this->tag))) {
                     this->complete = true;
+                    std::cout << "Downloaded " << nmails << " emails." << std::endl;
                     this->state = State::SELECTED;
                 }
             }
