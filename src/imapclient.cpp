@@ -175,7 +175,7 @@ void IMAPClient::fetchMails() {
     if(!this->uidvalidity){
         this->sendCommand("UID FETCH 1:* (BODY[])");
     }
-    
+
     else {
         this->sendCommand("UID FETCH " + this->uidnext + ":* (BODY[])");
     }
@@ -229,9 +229,13 @@ void IMAPClient::processResponse() {
 
         // Logging in
         else if (this->state == State::CONNECTED) {
-            if (response.starts_with("A" + std::to_string(this->tag))) {
+            if (response.starts_with("A" + std::to_string(this->tag) + " OK")) {
                 this->complete = true;
                 this->state = State::LOGGED;
+            }
+
+            else if (response.starts_with("A" + std::to_string(this->tag) + " NO")) {
+                throw std::runtime_error("Invalid credentials.");
             }
         }
 
@@ -327,7 +331,8 @@ void IMAPClient::processResponse() {
                     mailfile << data;
                     nmails++;
                     std::ofstream uidnext_f(this->out_dir + "/.uidnext");
-                    uidnext_f << uid;
+                   
+                    uidnext_f << std::to_string(std::stoi(uid) + 1);
                     getting_data = false;
                 }
             }
