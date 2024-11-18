@@ -53,7 +53,7 @@ public:
      * For parameter description see class documentation
      */
     IMAPClient(std::string &server, std::string &auth_file, std::string &out_dir, int port = 143, 
-                std::string mailbox = "INBOX", std::string certfile = "", std::string certaddr = "", 
+                std::string mailbox = "INBOX", std::string certfile = "", std::string certaddr = "/etc/ssl/certs", 
                 bool only_new = false, bool only_headers = false, bool secured = false);
 
 
@@ -158,6 +158,16 @@ private:
      * @throw std::runtime_error if response is BAD/NO
      */
     void processResponse();
+
+
+    /**
+     * @brief Checks the tagged response code
+     * 
+     * @return  0 when response is OK,
+     * @return  1 when response is NO,
+     * @return -1 when response is BAD 
+     */
+    void checkTagged(const std::string response);
 
 
     /**

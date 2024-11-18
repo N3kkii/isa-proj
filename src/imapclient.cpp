@@ -218,6 +218,54 @@ void IMAPClient::checkResponse() {
     this->complete = false;
 }
 
+void IMAPClient::checkTagged(const std::string response) {
+    int code = -1;
+    if (response.starts_with("A" + std::to_string(this->tag) + " OK")) {
+        code = 0;
+    }
+
+    else if (response.starts_with("A" + std::to_string(this->tag) + " NO")) {
+        code = 1;
+    }
+
+    else if (response.starts_with("A" + std::to_string(this->tag) + " BAD")) {
+        throw std::runtime_error("Internal error.");
+    }
+
+    else return;
+
+    switch (this->state) {
+        case State::CONNECTED:
+            if (!code) this->state = State::LOGGED;
+            else if (code) throw std::runtime_error("Invalid credentials.");
+            break;
+
+        case State::LOGGED:
+            if (!code) this->state = State::SELECTED;
+            else if (code) throw std::runtime_error("Desired mailbox does not exist.");
+            break;
+
+        case State::FETCHING:
+            if (!code) {
+                this->state = State::SELECTED;
+                if (!this->only_new) {
+                    std::cout << "Downloaded " << this->nmails << " emails." << std::endl;
+                }
+            }
+            else if (code) throw std::runtime_error("Could not fetch data from the server.");
+            break;
+
+        case State::SEARCHING:
+            if (!code) this->state = State::SELECTED;
+            else if (code) throw std::runtime_error("Could not search for new mails.");
+            break;
+        
+        default:
+            break;
+    }
+    this->complete = true;
+}
+
 void IMAPClient::processResponse() {
     std::size_t idx = 0;
     std::string response;
@@ -241,18 +289,7 @@ void IMAPClient::processResponse() {
             if (response.starts_with("* OK")) {
                 this->complete = true;
                 this->state = State::CONNECTED;
-            }
-        }
-
-        // Logging in
-        else if (this->state == State::CONNECTED) {
-            if (response.starts_with("A" + std::to_string(this->tag) + " OK")) {
-                this->complete = true;
-                this->state = State::LOGGED;
-            }
-
-            else if (response.starts_with("A" + std::to_string(this->tag) + " NO")) {
-                throw std::runtime_error("Invalid credentials.");
+                return;
             }
         }
 
@@ -329,15 +366,6 @@ void IMAPClient::processResponse() {
                     }
                 }
             }
-
-            else if (response.starts_with("A" + std::to_string(this->tag) + " OK")) {
-                this->complete = true;
-                this->state = State::SELECTED;
-            }
-
-            else if (response.starts_with("A" + std::to_string(this->tag) + " NO")) {
-                throw std::runtime_error("Desired mailbox does not exist.");
-            }
         }
 
          else if (this->state == State::SEARCHING) {
@@ -348,10 +376,6 @@ void IMAPClient::processResponse() {
                  while (iss >> uid) {
                     this->newuids.push_back(uid);
                 }
-            }
-            else if (response.starts_with("A" + std::to_string(this->tag) + " OK")) {
-                this->complete = true;
-                this->state = State::SELECTED;
             }
         }
 
@@ -373,7 +397,7 @@ void IMAPClient::processResponse() {
                     nmails++;
 
                     // Change UIDNEXT only when downloading complete emails
-                    if(!this->only_headers || this->only_new) {
+                    if(!this->only_headers && !this->only_new) {
                         std::ofstream uidnext_f(this->out_dir + "/.uidnext");
                         uidnext_f << std::to_string(std::stoi(uid) + 1);
                     }
@@ -392,24 +416,9 @@ void IMAPClient::processResponse() {
 
                 getting_data = true;
                 }
-
-                else if(response.starts_with("A" + std::to_string(this->tag))) {
-                    this->complete = true;
-                    // Print out the count of downloaded mails, when not in only_new mode
-                    // because only_new fetches mails one by one
-                    if (!this->only_new) {
-                        std::cout << "Downloaded " << nmails << " emails." << std::endl;
-                    }
-                    this->state = State::SELECTED;
-                }
             }
         }
-
-        else if (this->state == State::SELECTED || this->state == State::LOGOUT) {
-            if(response.starts_with("A" + std::to_string(this->tag))) {
-                this->complete = true;
-            }
-        }
+        checkTagged(response);
     }
 }
 
