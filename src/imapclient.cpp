@@ -172,13 +172,30 @@ void IMAPClient::selectMailbox() {
 }
 
 void IMAPClient::fetchMails() {
+    std::string content{" (BODY[])"};
+    if (this->only_headers) {
+        content = " (BODY[HEADER])";
+    }
+
+    if (this->only_new){
+        this->state = State::SEARCHING;
+        this->sendCommand("UID SEARCH NEW");
+
+        for (std::string& uid : this->newuids) {
+            this->state = State::FETCHING;
+            sendCommand("UID FETCH " + uid + content);
+        }
+        std::cout << "Downloaded " << this->nmails << " new mails." << std::endl;
+        return;
+    }
+
     this->state = State::FETCHING;
     if(!this->uidvalidity){
-        this->sendCommand("UID FETCH 1:* (BODY[])");
+            this->sendCommand("UID FETCH 1:*" + content);
     }
 
     else {
-        this->sendCommand("UID FETCH " + this->uidnext + ":* (BODY[])");
+        this->sendCommand("UID FETCH " + this->uidnext + ":*" + content); 
     }
 }
 
@@ -243,13 +260,13 @@ void IMAPClient::processResponse() {
         else if (this->state == State::LOGGED) {
             
             // handle untagged responses
-            if (response.starts_with("* OK")) {
+            if (response.starts_with("* OK") && !this->only_new) {
                 std::string argline = response.substr(response.find("[")+1, response.find("]") - response.find("[")-1);
                 std::istringstream iss{argline};
                 std::string arg;
                 iss >> arg;
 
-                if (arg == "UIDVALIDITY") {
+                if (arg == "UIDVALIDITY" && !this->only_headers) {
                     std::string old_uid, new_uid;
                     iss >> new_uid;
                     std::string filename = this->out_dir + "/.uidvalidity";
@@ -313,7 +330,26 @@ void IMAPClient::processResponse() {
                 }
             }
 
-            else if (response.starts_with("A" + std::to_string(this->tag))) {
+            else if (response.starts_with("A" + std::to_string(this->tag) + " OK")) {
+                this->complete = true;
+                this->state = State::SELECTED;
+            }
+
+            else if (response.starts_with("A" + std::to_string(this->tag) + " NO")) {
+                throw std::runtime_error("Desired mailbox does not exist.");
+            }
+        }
+
+         else if (this->state == State::SEARCHING) {
+            if (response.starts_with("* SEARCH")) {
+                std::istringstream iss(response.substr(8));
+                std::string uid;
+
+                 while (iss >> uid) {
+                    this->newuids.push_back(uid);
+                }
+            }
+            else if (response.starts_with("A" + std::to_string(this->tag) + " OK")) {
                 this->complete = true;
                 this->state = State::SELECTED;
             }
@@ -335,9 +371,13 @@ void IMAPClient::processResponse() {
                     std::ofstream mailfile(filename);
                     mailfile << data;
                     nmails++;
-                    std::ofstream uidnext_f(this->out_dir + "/.uidnext");
-                   
-                    uidnext_f << std::to_string(std::stoi(uid) + 1);
+
+                    // Change UIDNEXT only when downloading complete emails
+                    if(!this->only_headers || this->only_new) {
+                        std::ofstream uidnext_f(this->out_dir + "/.uidnext");
+                        uidnext_f << std::to_string(std::stoi(uid) + 1);
+                    }
+                    
                     getting_data = false;
                 }
             }
@@ -355,7 +395,11 @@ void IMAPClient::processResponse() {
 
                 else if(response.starts_with("A" + std::to_string(this->tag))) {
                     this->complete = true;
-                    std::cout << "Downloaded " << nmails << " emails." << std::endl;
+                    // Print out the count of downloaded mails, when not in only_new mode
+                    // because only_new fetches mails one by one
+                    if (!this->only_new) {
+                        std::cout << "Downloaded " << nmails << " emails." << std::endl;
+                    }
                     this->state = State::SELECTED;
                 }
             }

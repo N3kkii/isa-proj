@@ -11,6 +11,7 @@
 // C++
 #include <iostream>
 #include <string>
+#include <vector>
 
 // C
 #include <string.h>
@@ -36,6 +37,7 @@ enum class State {
     CONNECTED,
     LOGGED,
     SELECTED,
+    SEARCHING,
     FETCHING,
     LOGOUT
 };
@@ -98,6 +100,7 @@ private:
     bool synced;            // client - server synchronization flag
     std::string uidnext;
     std::string buff;       // input stream buffer
+    std::vector<std::string> newuids; // vector of new message UIDs
 
     BIO *bio;               // OpenSSL BIO object for writing and reading on socket
     SSL_CTX *ctx;           // OpenSSL context structure
