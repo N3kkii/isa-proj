@@ -100,6 +100,8 @@ void ArgParser::getOptionValue(const std::vector<std::string> &args, std::vector
 void ArgParser::printHelp() {
     std::cout << 
 R"(Usage: imapcl server -a auth_file -o out_dir [OPTIONS]
+    -a auth_file    File with username and password
+    -o out_dir      Folder to store downloaded emails
 
  OPTIONS:
     -p port         Specifies server port number, defaults to 143 (993 with TLS)
@@ -107,8 +109,8 @@ R"(Usage: imapcl server -a auth_file -o out_dir [OPTIONS]
     -h              Download only mail headers
     -b MAILBOX      Specifies the mailbox, defaults to INBOX
     -T              Use secured communication
-    -c certfile     Specifies file with certificates for verifying the server ceritficate
-    -C certaddr     Specifies folder with certificates
+    -c certfile     Specifies the file with certificates for verifying the server ceritficate
+    -C certdir      Specifies the directory with certificate files, defaults to /etc/ssl/certs
     --help          Shows this help)"
     << std::endl;
 }
@@ -132,7 +134,7 @@ Config ArgParser::getConfig() {
 
 void ArgParser::check() {
     if (this->server == "" || this->out_dir == "" || this->auth_file == "") {
-        throw std::invalid_argument("Mandatory arguments not provided.");
+        throw std::invalid_argument("Mandatory arguments not provided. Run with --help to show help."); 
     }
 
     if (this->certaddr.empty() && this->certfile.empty() && this->secured) {

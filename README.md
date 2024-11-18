@@ -15,7 +15,7 @@ username
 password
 ```
 
-```imapcl server -a auth_file -o out_dir [-T] [-c] [-C] [-p port] [-b mailbox] [-n] [-h] [--help]```
+```imapcl server -a auth_file -o out_dir [-T] [-c certfile] [-C certdir] [-p port] [-b mailbox] [-n] [-h] [--help]```
 
 
 ## Authors:
