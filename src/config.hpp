@@ -1,3 +1,11 @@
+/**
+ * @file config.hpp
+ * @author Vojtěch Adámek
+ * 
+ * @brief Config structure for passing arguments to IMAPClient
+ */
+
+
 #ifndef CONFIG_HPP
 #define CONFIG_HPP
 
