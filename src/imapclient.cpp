@@ -72,7 +72,7 @@ void IMAPClient::connectToHost() {
 
     if (this->secured) { // use secured connection
         // create SSL context
-        this->ctx = SSL_CTX_new(SSLv23_client_method());
+        this->ctx = SSL_CTX_new(TLS_client_method());
         if (ctx == nullptr) {
             throw std::runtime_error("Error creating SSL context.");
         }
@@ -249,7 +249,13 @@ void IMAPClient::checkTagged(const std::string response) {
             if (!code) {
                 this->state = State::SELECTED;
                 if (!this->only_new) {
-                    std::cout << "Downloaded " << this->nmails << " emails." << std::endl;
+                    if (this->only_headers) {
+                        std::cout << "Downloaded " << this->nmails << " email headers." << std::endl;
+
+                    }
+                    else {
+                        std::cout << "Downloaded " << this->nmails << " emails." << std::endl;
+                    }
                 }
             }
             else if (code) throw std::runtime_error("Could not fetch data from the server.");
