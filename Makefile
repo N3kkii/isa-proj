@@ -14,10 +14,10 @@ OBJS=$(patsubst $(SRC_DIR)/%.cpp, $(BUILD_DIR)/%.o, $(SRCS))
 
 EXEC=imapcl
 
-all: $(BUILD_DIR)/$(EXEC)
+all: $(EXEC)
 
-$(BUILD_DIR)/$(EXEC): $(OBJS)
-	$(CXX) $(OBJS) -o $(BUILD_DIR)/$(EXEC) -lssl -lcrypto
+$(EXEC): $(OBJS)
+	$(CXX) $(OBJS) -o $(EXEC) -lssl -lcrypto
 
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp
 	mkdir -p $(dir $@)
@@ -31,6 +31,7 @@ run-tests:
 
 clean:
 	rm -rf $(BUILD_DIR)
+	rm imapcl
 
 debug: CXXFLAGS += -g -O0
 debug: all
